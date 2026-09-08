@@ -1,0 +1,1709 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>TERRASYNC - AI Crop Early Warning Platform</title>
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#001f3f">
+
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Leaflet Map CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "primary": "#001f3f",
+            "on-primary-container": "#809eca",
+            "outline-variant": "#c3c6cf",
+            "surface-container-high": "#e8e8e8",
+            "secondary-fixed-dim": "#88d982",
+            "on-tertiary-fixed": "#001e2c",
+            "on-secondary-fixed-variant": "#005312",
+            "surface-tint": "#416088",
+            "surface": "#f9f9f9",
+            "background": "#f8fafc",
+            "on-error": "#ffffff",
+            "on-secondary-fixed": "#002204",
+            "secondary-fixed": "#a3f69c",
+            "primary-fixed-dim": "#aac8f6",
+            "surface-container-low": "#f3f3f3",
+            "on-background": "#1a1c1c",
+            "outline": "#73777f",
+            "on-primary-fixed": "#001c39",
+            "secondary": "#1b6d24",
+            "on-error-container": "#93000a",
+            "on-surface": "#1a1c1c",
+            "surface-dim": "#dadada",
+            "on-primary": "#ffffff",
+            "on-secondary": "#ffffff",
+            "on-tertiary-container": "#58a6cd",
+            "surface-bright": "#f9f9f9",
+            "surface-variant": "#e2e2e2",
+            "secondary-container": "#a0f399",
+            "on-tertiary": "#ffffff",
+            "error-container": "#ffdad6",
+            "on-secondary-container": "#217128",
+            "inverse-primary": "#aac8f6",
+            "primary-container": "#12355b",
+            "tertiary-fixed": "#c2e8ff",
+            "on-surface-variant": "#43474e",
+            "tertiary-fixed-dim": "#84d0f8",
+            "tertiary-container": "#00394e",
+            "primary-fixed": "#d3e3ff",
+            "surface-container-highest": "#e2e2e2",
+            "error": "#ba1a1a",
+            "inverse-primary": "#aac8f6",
+            "secondary-fixed": "#a3f69c",
+            "secondary-fixed-dim": "#88d982",
+            "on-error-container": "#93000a",
+            "surface": "#f9f9f9",
+            "background": "#f9f9f9",
+            "on-primary-fixed-variant": "#28486f",
+            "on-tertiary": "#ffffff",
+            "error-container": "#ffdad6",
+            "surface-container": "#eeeeee",
+            "on-background": "#1a1c1c",
+            "tech-blue": "#247BA0",
+            "agri-green": "#2E7D32"
+          },
+          "fontFamily": {
+            "body-md": ["Manrope", "sans-serif"],
+            "headline-lg": ["Manrope", "sans-serif"],
+            "headline-md": ["Manrope", "sans-serif"]
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body { background-color: #F8FAFC; }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(195, 198, 207, 0.4);
+      box-shadow: 0 4px 6px -1px rgba(18, 53, 91, 0.05), 0 2px 4px -1px rgba(18, 53, 91, 0.03);
+    }
+    
+    .nav-active { position: relative; }
+    .nav-active::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: #001f3f;
+    }
+
+    .ai-scan-line {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(to right, transparent, rgba(59, 130, 246, 0.8), transparent);
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+      animation: scan 2.5s infinite linear;
+    }
+
+    @keyframes scan {
+      0% { top: 0; opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { top: 100%; opacity: 0; }
+    }
+
+    .circular-chart {
+      display: block;
+      margin: 0 auto;
+      max-width: 80%;
+      max-height: 180px;
+    }
+
+    .circle-bg {
+      fill: none;
+      stroke: #e2e2e2;
+      stroke-width: 3.8;
+    }
+
+    .circle {
+      fill: none;
+      stroke-width: 2.8;
+      stroke-linecap: round;
+      animation: progress 1.5s ease-out forwards;
+    }
+
+    @keyframes progress {
+      0% { stroke-dasharray: 0 100; }
+    }
+    
+    .pulse-ring-marker {
+      position: relative;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+    }
+    
+    .pulse-ring-marker::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      animation: pulse 2s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+    }
+
+    @keyframes pulse {
+      0% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.8; }
+      70% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+      100% { transform: translate(-50%, -50%) scale(0.95); opacity: 0; }
+    }
+
+    .slide-in-left { animation: slideInLeft 0.5s ease-out forwards; }
+    .slide-in-right { animation: slideInRight 0.5s ease-out forwards; }
+    .fade-in-up { animation: fadeInUp 0.5s ease-out forwards; }
+
+    @keyframes slideInLeft {
+      from { transform: translateX(-20px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideInRight {
+      from { transform: translateX(20px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes fadeInUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .ambient-shadow {
+      box-shadow: 0 10px 40px -10px rgba(18, 53, 91, 0.08), 0 4px 12px -4px rgba(18, 53, 91, 0.04);
+    }
+    .ambient-shadow-sm {
+      box-shadow: 0 4px 12px -4px rgba(18, 53, 91, 0.06);
+    }
+  </style>
+</head>
+<body class="font-body-md text-on-surface antialiased bg-background min-h-screen flex flex-col">
+
+  <!-- Top Navigation Bar -->
+  <nav class="bg-surface/90 backdrop-blur-md fixed top-0 w-full z-50 border-b border-outline-variant/10 shadow-sm transition-all duration-300">
+    <div class="flex justify-between items-center h-16 px-4 md:px-10 max-w-[1280px] mx-auto">
+      
+      <!-- Brand Logo (Headline Preserved) -->
+      <div class="flex items-center gap-2 cursor-pointer" onclick="switchMode('farmer')">
+        <span class="material-symbols-outlined text-primary text-2xl" style="font-variation-settings: 'FILL' 1;">psychology</span>
+        <span class="font-bold text-xl tracking-tight text-primary">TERRASYNC</span>
+        <span class="bg-primary-container text-on-primary-container text-[10px] px-2 py-0.5 rounded font-bold">TerraSync AI</span>
+      </div>
+
+      <!-- Navigation Links (Desktop) -->
+      <div class="hidden md:flex items-center space-x-8">
+        <button id="nav-btn-farmer" onclick="switchMode('farmer')" data-i18n="nav_dashboard" class="text-primary font-bold nav-active text-sm transition-colors">
+          डैशबोर्ड और स्कैनर
+        </button>
+        <button id="nav-btn-expert" onclick="switchMode('expert')" data-i18n="nav_risk_map" class="text-on-surface-variant hover:text-primary font-bold text-sm transition-colors">
+          लाइव जोखिम मानचित्र और एक्सपर्ट पोर्टल
+        </button>
+      </div>
+
+      <!-- Language Selector & Actions -->
+      <div class="flex items-center space-x-4">
+        <select id="language-select" onchange="changeLanguage(this.value)" class="bg-surface border border-outline-variant text-xs rounded-lg px-2.5 py-1.5 font-bold text-primary focus:outline-none shadow-sm">
+          <option value="hi">🇮🇳 हिंदी (Hindi)</option>
+          <option value="te">🇮🇳 తెలుగు (Telugu)</option>
+          <option value="pa">🇮🇳 ਪੰਜਾਬੀ (Punjabi)</option>
+          <option value="en">🇬🇧 English</option>
+        </select>
+
+        <button onclick="openBroadcastModal()" class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-lg transition-all relative">
+          <span class="material-symbols-outlined text-primary">notifications</span>
+          <span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full animate-ping"></span>
+        </button>
+
+        <div class="flex items-center gap-2.5 pl-3 border-l border-outline-variant/30">
+          <div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-sm">
+            R
+          </div>
+          <span class="hidden lg:block text-xs font-bold text-primary">Ramesh Kumar</span>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main class="pt-20 pb-20 px-4 md:px-10 max-w-[1280px] w-full mx-auto space-y-8 flex-grow">
+
+    <!-- ======================================================== -->
+    <!-- VIEW 1: FARMER DASHBOARD & CROP SCANNER                   -->
+    <!-- ======================================================== -->
+    <div id="view-farmer" class="space-y-8">
+      
+      <!-- Greeting Header -->
+      <header class="space-y-1">
+        <h1 class="text-3xl font-extrabold text-primary" data-i18n="greeting_title">Good Morning, Ramesh 👋</h1>
+        <p class="text-on-surface-variant text-sm font-medium" data-i18n="greeting_sub">यहाँ आपकी फसल स्वास्थ्य अवलोकन और एआई चेतावनी प्रणाली है।</p>
+      </header>
+
+      <!-- Top Section: Hero Card & Quick Actions Bento Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Hero Card -->
+        <div class="lg:col-span-8 glass-card rounded-xl overflow-hidden relative border-l-4 border-l-tech-blue shadow-sm">
+          <div class="p-6 md:p-8 flex flex-col md:flex-row h-full items-center justify-between gap-6">
+            <div class="w-full md:w-3/5 space-y-4 z-10">
+              <h2 class="text-xl font-bold text-primary" data-i18n="hero_title">फसल स्वास्थ्य अवलोकन</h2>
+              
+              <div class="flex items-center gap-5">
+                <!-- Circular Score -->
+                <div class="relative w-28 h-28 flex items-center justify-center rounded-full bg-surface shadow-inner shrink-0">
+                  <svg class="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" fill="none" r="45" stroke="#e2e2e2" stroke-width="8"></circle>
+                    <circle id="hero-score-stroke" class="transition-all duration-1000 ease-out" cx="50" cy="50" fill="none" r="45" stroke="#2E7D32" stroke-dasharray="282.7" stroke-dashoffset="50.8" stroke-width="8"></circle>
+                  </svg>
+                  <div class="text-center">
+                    <span id="hero-score-val" class="block text-3xl font-extrabold text-primary">82</span>
+                    <span id="hero-score-lbl" data-i18n="hero_good" class="block text-[11px] font-extrabold text-agri-green uppercase">अच्छा</span>
+                  </div>
+                </div>
+
+                <div class="space-y-1">
+                  <p id="hero-score-desc" data-i18n="hero_desc" class="text-xs text-on-surface-variant font-medium leading-relaxed">
+                    आपकी फसल का स्वास्थ्य वर्तमान में बहुत अच्छा है। जालना सेंट्रल में आदर्श नमी और फसल संतुलन पाया गया है।
+                  </p>
+                  <div class="flex items-center gap-2 pt-1">
+                    <span data-i18n="tag_crops_active" class="px-2 py-0.5 bg-secondary-container/50 text-agri-green font-bold text-[10px] rounded">धान एवं गेहूं सक्रिय</span>
+                    <span data-i18n="updated_today" class="text-[11px] text-outline">आज अद्यतन किया गया</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Vector Graphic (Main Headline Preserved) -->
+            <div class="w-full md:w-2/5 h-40 md:h-full flex items-center justify-center pointer-events-none opacity-90">
+              <div class="bg-primary/5 p-6 rounded-2xl text-center border border-outline-variant/30 w-full">
+                <span class="material-symbols-outlined text-5xl text-primary mb-2">eco</span>
+                <p class="text-xs font-bold text-primary">TerraSync Sensor Fusion</p>
+                <p class="text-[10px] text-on-surface-variant" data-i18n="sensor_sub">लाइव सेंसर एवं उपग्रह सिग्नल</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions Bento Grid -->
+        <div class="lg:col-span-4 grid grid-cols-2 gap-4">
+          <a onclick="scrollToScanner()" class="glass-card p-4 rounded-xl hover:bg-primary-container hover:text-on-primary-container transition-all duration-300 group flex flex-col justify-between cursor-pointer border hover:border-primary/20 shadow-sm">
+            <div class="flex justify-between items-start mb-4">
+              <div class="w-10 h-10 rounded-full bg-primary/5 text-primary flex items-center justify-center group-hover:bg-white/20">
+                <span class="material-symbols-outlined">center_focus_weak</span>
+              </div>
+              <span class="material-symbols-outlined text-outline group-hover:text-on-primary-container opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+            </div>
+            <div>
+              <h3 class="text-xs font-bold mb-1" data-i18n="bento_scan_title">फसल स्कैन करें</h3>
+              <p class="text-[11px] text-on-surface-variant group-hover:text-on-primary-container/80 font-medium" data-i18n="bento_scan_desc">एआई रोग पहचान</p>
+            </div>
+          </a>
+
+          <a onclick="scrollToScanner()" class="glass-card p-4 rounded-xl hover:bg-surface-container-low transition-all duration-300 group flex flex-col justify-between cursor-pointer shadow-sm">
+            <div class="flex justify-between items-start mb-4">
+              <div class="w-10 h-10 rounded-full bg-primary/5 text-tech-blue flex items-center justify-center">
+                <span class="material-symbols-outlined">wb_sunny</span>
+              </div>
+              <span class="material-symbols-outlined text-outline group-hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+            </div>
+            <div>
+              <h3 class="text-xs font-bold mb-1" data-i18n="bento_forecast_title">पूर्वानुमान</h3>
+              <p class="text-[11px] text-on-surface-variant font-medium" data-i18n="bento_forecast_desc">मौसम और जोखिम</p>
+            </div>
+          </a>
+
+          <a onclick="scrollToScanner()" class="glass-card p-4 rounded-xl hover:bg-surface-container-low transition-all duration-300 group flex flex-col justify-between cursor-pointer shadow-sm">
+            <div class="flex justify-between items-start mb-4">
+              <div class="w-10 h-10 rounded-full bg-primary/5 text-error flex items-center justify-center">
+                <span class="material-symbols-outlined">pest_control</span>
+              </div>
+              <span class="material-symbols-outlined text-outline group-hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+            </div>
+            <div>
+              <h3 class="text-xs font-bold mb-1" data-i18n="bento_pests_title">कीट चेतावनी</h3>
+              <p class="text-[11px] text-on-surface-variant font-medium" data-i18n="bento_pests_desc">कीट जाल डेटा</p>
+            </div>
+          </a>
+
+          <a onclick="switchMode('expert')" class="glass-card p-4 rounded-xl hover:bg-surface-container-low transition-all duration-300 group flex flex-col justify-between cursor-pointer shadow-sm">
+            <div class="flex justify-between items-start mb-4">
+              <div class="w-10 h-10 rounded-full bg-primary/5 text-primary flex items-center justify-center">
+                <span class="material-symbols-outlined">map</span>
+              </div>
+              <span class="material-symbols-outlined text-outline group-hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+            </div>
+            <div>
+              <h3 class="text-xs font-bold mb-1" data-i18n="bento_risk_title">जोखिम मानचित्र</h3>
+              <p class="text-[11px] text-on-surface-variant font-medium" data-i18n="bento_risk_desc">स्थानिक विश्लेषण</p>
+            </div>
+          </a>
+        </div>
+
+      </div>
+
+      <!-- Middle Section: Recent Alerts & Weekly Overview -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Recent Alerts -->
+        <div class="lg:col-span-4 space-y-4">
+          <div class="flex justify-between items-center mb-2">
+            <h2 class="text-lg font-bold text-primary" data-i18n="recent_alerts_title">हाल की चेतावनियाँ</h2>
+            <button onclick="switchMode('expert')" class="text-xs font-bold text-tech-blue hover:underline" data-i18n="btn_view_map">मानचित्र देखें</button>
+          </div>
+          
+          <div id="alerts-feed-container" class="space-y-3">
+            <!-- Red High Risk Alert -->
+            <div class="glass-card p-4 rounded-xl border-l-4 border-error flex gap-3 items-start transition-all hover:shadow-md cursor-pointer">
+              <div class="w-8 h-8 rounded-full bg-error-container text-on-error-container flex items-center justify-center shrink-0 mt-0.5">
+                <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">warning</span>
+              </div>
+              <div class="space-y-0.5">
+                <div class="flex justify-between items-center gap-4">
+                  <span class="text-xs font-extrabold text-error" data-i18n="risk_high_tag">उच्च जोखिम</span>
+                  <span class="text-[10px] text-outline">10m ago</span>
+                </div>
+                <p class="text-xs font-bold text-on-surface" data-i18n="alert_1_msg">धान के झुलसा रोग (Rice Blast) के बीजाणुओं में वृद्धि</p>
+                <p class="text-[11px] text-outline flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[13px]">location_on</span> जालना सेंट्रल सेक्टर A
+                </p>
+              </div>
+            </div>
+
+            <!-- Orange Medium Risk Alert -->
+            <div class="glass-card p-4 rounded-xl border-l-4 border-orange-500 flex gap-3 items-start transition-all hover:shadow-md cursor-pointer">
+              <div class="w-8 h-8 rounded-full bg-orange-100 text-orange-800 flex items-center justify-center shrink-0 mt-0.5">
+                <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">thunderstorm</span>
+              </div>
+              <div class="space-y-0.5">
+                <div class="flex justify-between items-center gap-4">
+                  <span class="text-xs font-extrabold text-orange-600" data-i18n="risk_med_tag">मध्यम जोखिम</span>
+                  <span class="text-[10px] text-outline">2h ago</span>
+                </div>
+                <p class="text-xs font-bold text-on-surface" data-i18n="alert_2_msg">अत्यधिक आर्द्रता (>85%) का मौसम पूर्वानुमान</p>
+              </div>
+            </div>
+
+            <!-- Green Low Risk Alert -->
+            <div class="glass-card p-4 rounded-xl border-l-4 border-agri-green flex gap-3 items-start transition-all hover:shadow-md cursor-pointer">
+              <div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0 mt-0.5">
+                <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+              </div>
+              <div class="space-y-0.5">
+                <div class="flex justify-between items-center gap-4">
+                  <span class="text-xs font-extrabold text-agri-green" data-i18n="risk_low_tag">कम जोखिम</span>
+                  <span class="text-[10px] text-outline">Yesterday</span>
+                </div>
+                <p class="text-xs font-bold text-on-surface" data-i18n="alert_3_msg">फसल स्कैन एवं मृदा नमी का सत्यापन पूर्ण</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Weekly Overview Data Viz -->
+        <div class="lg:col-span-8 space-y-4">
+          <div class="flex justify-between items-center mb-2">
+            <h2 class="text-lg font-bold text-primary" data-i18n="weekly_overview_title">साप्ताहिक अवलोकन</h2>
+            <span class="text-xs text-outline font-semibold" data-i18n="last_7_days">पिछले 7 दिन</span>
+          </div>
+
+          <div class="glass-card rounded-xl p-6 border-l-4 border-tech-blue flex items-center justify-center shadow-sm">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center divide-x divide-outline-variant/20 w-full">
+              <div class="px-2">
+                <div class="w-12 h-12 mx-auto mb-2 rounded-full bg-surface-container-low flex items-center justify-center text-primary">
+                  <span class="material-symbols-outlined">center_focus_weak</span>
+                </div>
+                <span class="block text-2xl font-extrabold text-primary">12</span>
+                <span class="block text-xs font-bold text-on-surface-variant mt-1" data-i18n="stat_scans">फसल जांच</span>
+              </div>
+
+              <div class="px-2">
+                <div class="w-12 h-12 mx-auto mb-2 rounded-full bg-error-container/50 flex items-center justify-center text-error">
+                  <span class="material-symbols-outlined">notification_important</span>
+                </div>
+                <span id="stat-active-alerts-count" class="block text-2xl font-extrabold text-primary">3</span>
+                <span class="block text-xs font-bold text-on-surface-variant mt-1" data-i18n="stat_active_alerts">सक्रिय चेतावनियाँ</span>
+              </div>
+
+              <div class="px-2">
+                <div class="w-12 h-12 mx-auto mb-2 rounded-full bg-orange-50 flex items-center justify-center text-orange-500">
+                  <span class="material-symbols-outlined">cloud</span>
+                </div>
+                <span class="block text-sm font-extrabold text-primary mt-2" data-i18n="val_medium">मध्यम</span>
+                <span class="block text-xs font-bold text-on-surface-variant mt-1" data-i18n="stat_weather_risk">मौसम जोखिम</span>
+              </div>
+
+              <div class="px-2">
+                <div class="w-12 h-12 mx-auto mb-2 rounded-full bg-secondary-container/50 flex items-center justify-center text-agri-green">
+                  <span class="material-symbols-outlined">spa</span>
+                </div>
+                <span class="block text-sm font-extrabold text-agri-green mt-2" data-i18n="val_healthy">स्वस्थ</span>
+                <span class="block text-xs font-bold text-on-surface-variant mt-1" data-i18n="stat_overall_status">समग्र स्थिति</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- AI CROP SCANNER SECTION -->
+      <div id="section-scanner" class="pt-4 space-y-6">
+        
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-t border-outline-variant/30 pt-6">
+          <div>
+            <h2 class="text-2xl font-extrabold text-primary flex items-center gap-2" data-i18n="scanner_title">
+              <span class="material-symbols-outlined text-primary text-3xl" data-icon="photo_camera">photo_camera</span> एआई फसल स्कैनर
+            </h2>
+            <p class="text-on-surface-variant text-sm font-medium" data-i18n="scanner_desc">तुरंत रोग की पहचान के लिए पौधे की पत्ती की फोटो अपलोड करें या खींचें।</p>
+          </div>
+          <button onclick="triggerVoiceAdvisory()" class="bg-secondary hover:bg-secondary/90 text-on-secondary px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-sm flex items-center gap-2">
+            <span class="material-symbols-outlined text-base" data-icon="volume_up">volume_up</span> <span id="lbl-btn-listen" data-i18n="btn_listen">आवाज में सुनें</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          <!-- Left: Upload Box -->
+          <div class="lg:col-span-8">
+            <div class="bg-surface-container-lowest rounded-xl ambient-shadow p-8 flex flex-col items-center justify-center min-h-[380px] border-2 border-dashed border-outline-variant hover:border-primary transition-colors cursor-pointer group relative overflow-hidden" onclick="document.getElementById('file-input').click()">
+              <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleImageSelect(event)">
+              
+              <div class="absolute inset-0 opacity-5 pointer-events-none flex justify-center items-center">
+                <span class="material-symbols-outlined text-[200px]" data-icon="eco">eco</span>
+              </div>
+              
+              <div id="upload-prompt" class="flex flex-col items-center z-10 space-y-3">
+                <div class="bg-primary-fixed/30 p-4 rounded-full group-hover:bg-primary-fixed/50 transition-colors">
+                  <span class="material-symbols-outlined text-4xl text-primary" data-icon="photo_camera">photo_camera</span>
+                </div>
+                <h3 class="text-xl font-bold text-primary text-center" data-i18n="drag_drop_title">यहां अपनी फसल की फोटो खींचें या छोड़ें</h3>
+                <p class="text-sm text-on-surface-variant"><span data-i18n="or_lbl">या</span> <span class="text-primary font-bold hover:underline" data-i18n="btn_upload">फोटो अपलोड करें</span></p>
+                <button class="bg-primary text-on-primary px-6 py-2.5 rounded-lg font-bold text-sm shadow-sm flex items-center gap-2 mt-2">
+                  <span class="material-symbols-outlined text-sm" data-icon="add_a_photo">add_a_photo</span> <span data-i18n="btn_take_photo">फोटो लें</span>
+                </button>
+              </div>
+
+              <!-- Preview Image & Scanning Line -->
+              <div id="preview-wrapper" class="hidden relative w-full max-w-md mx-auto z-10 text-center">
+                <img id="img-preview" class="max-h-60 mx-auto rounded-lg shadow-md border border-outline-variant object-cover">
+                <div class="ai-scan-line"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Metadata & Presets -->
+          <div class="lg:col-span-4 flex flex-col justify-between gap-6">
+            <div class="bg-surface-container-lowest rounded-xl ambient-shadow p-6 space-y-4">
+              <h3 class="text-base font-bold text-primary border-b border-surface-variant pb-3 flex items-center gap-2" data-i18n="crop_params_title">
+                <span class="material-symbols-outlined text-primary" data-icon="tune">tune</span> फसल पैरामीटर
+              </h3>
+
+              <div class="space-y-3 text-xs">
+                <div>
+                  <label class="block font-bold text-on-surface-variant uppercase mb-1" data-i18n="lbl_select_crop">फसल का चयन करें</label>
+                  <select id="farmer-crop" class="w-full bg-surface border border-outline-variant rounded-lg px-3 py-2 font-bold text-primary focus:border-primary">
+                    <option value="rice">धान (Rice / Paddy)</option>
+                    <option value="wheat">गेहूं (Wheat)</option>
+                    <option value="tomato">टमाटर (Tomato)</option>
+                    <option value="cotton">कपास (Cotton)</option>
+                    <option value="potato">आलू (Potato)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block font-bold text-on-surface-variant uppercase mb-1" data-i18n="lbl_growth_stage">वृद्धि का चरण</label>
+                  <select id="farmer-stage" class="w-full bg-surface border border-outline-variant rounded-lg px-3 py-2 font-bold text-primary focus:border-primary">
+                    <option value="vegetative">वानस्पतिक (Vegetative)</option>
+                    <option value="flowering">फूल आने का समय (Flowering)</option>
+                    <option value="fruiting">फल/दाना (Fruiting)</option>
+                    <option value="seedling">अंकुरण (Seedling)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="bg-surface p-3 rounded-lg border border-outline-variant/40 space-y-2 text-xs">
+                <div class="flex justify-between font-bold text-on-surface">
+                  <span>तापमान: <strong id="val-temp" class="text-primary">29.5°C</strong></span>
+                  <span>आर्द्रता: <strong id="val-hum" class="text-primary">86%</strong></span>
+                </div>
+                <input type="range" id="input-temp" min="15" max="45" value="29.5" step="0.5" oninput="document.getElementById('val-temp').innerText=this.value+'°C'" class="w-full accent-primary h-1.5 bg-surface-variant rounded-lg cursor-pointer">
+                <input type="range" id="input-hum" min="30" max="100" value="86" step="1" oninput="document.getElementById('val-hum').innerText=this.value+'%'" class="w-full accent-primary h-1.5 bg-surface-variant rounded-lg cursor-pointer">
+              </div>
+
+              <div>
+                <p class="text-xs font-bold text-on-surface-variant mb-2 uppercase" data-i18n="quick_presets">त्वरित सैंपल (Presets):</p>
+                <div class="grid grid-cols-2 gap-2">
+                  <button onclick="loadDemoSample('rice_blast')" class="bg-surface hover:bg-primary-fixed/30 border border-outline-variant/60 text-xs py-2 px-2 rounded-lg font-bold text-primary text-center">
+                    🌾 धान झुलसा
+                  </button>
+                  <button onclick="loadDemoSample('wheat_rust')" class="bg-surface hover:bg-primary-fixed/30 border border-outline-variant/60 text-xs py-2 px-2 rounded-lg font-bold text-primary text-center">
+                    🌾 गेहूं रतुआ
+                  </button>
+                  <button onclick="loadDemoSample('tomato_blight')" class="bg-surface hover:bg-primary-fixed/30 border border-outline-variant/60 text-xs py-2 px-2 rounded-lg font-bold text-primary text-center">
+                    🍅 टमाटर झुलसा
+                  </button>
+                  <button onclick="loadDemoSample('healthy')" class="bg-surface hover:bg-primary-fixed/30 border border-outline-variant/60 text-xs py-2 px-2 rounded-lg font-bold text-primary text-center">
+                    ✨ स्वस्थ फसल
+                  </button>
+                </div>
+              </div>
+
+              <button id="btn-diagnose" onclick="submitDiagnosis()" class="w-full bg-primary hover:bg-primary-container text-on-primary font-bold py-3 rounded-lg shadow-sm transition flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-sm" data-icon="search">search</span> <span data-i18n="btn_analyze">एआई के साथ फसल की जांच करें</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Diagnostic Output Bento Grid -->
+        <div id="ai-results-section" class="mt-8 space-y-6">
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-secondary text-3xl" data-icon="check_circle">check_circle</span>
+            <h2 class="text-2xl font-bold text-primary" data-i18n="ai_complete_title">एआई विश्लेषण पूर्ण</h2>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+            
+            <div class="md:col-span-6 lg:col-span-4 bg-surface-container-lowest rounded-xl ambient-shadow p-6 flex flex-col justify-between border border-outline-variant/30">
+              <div>
+                <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider block mb-2" data-i18n="crop_id_title">फसल पहचान और रोग</span>
+                <h3 id="res-disease-name" class="text-2xl font-bold text-primary mb-1">धान का झुलसा रोग (Rice Blast)</h3>
+                <p id="res-model-used" class="text-sm text-on-surface-variant font-medium">MobileNetV3 AI Classifier • Vegetative Stage</p>
+              </div>
+              
+              <div class="mt-6 pt-4 border-t border-surface-variant">
+                <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider block mb-1" data-i18n="detected_anomaly">पहचाना गया विकार</span>
+                <div class="flex items-center gap-2 text-error font-bold">
+                  <span class="material-symbols-outlined" data-icon="pest_control">pest_control</span>
+                  <h4 id="res-anomaly-lbl" class="text-lg">Fungal Infection Confirmed</h4>
+                </div>
+              </div>
+            </div>
+
+            <div class="md:col-span-6 lg:col-span-4 bg-surface-container-lowest rounded-xl ambient-shadow p-6 flex flex-col items-center justify-center relative border border-outline-variant/30">
+              <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider absolute top-6 left-6" data-i18n="ai_confidence_title">एआई सटीकता (Confidence)</span>
+              <div class="w-full max-w-[140px] mt-6 relative">
+                <svg class="circular-chart text-primary w-full h-full" viewBox="0 0 36 36">
+                  <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                  <path id="circle-stroke" class="circle stroke-current text-secondary" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" stroke-dasharray="92, 100"></path>
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center flex-col">
+                  <span id="confidence-pct" class="text-3xl font-extrabold text-primary">92%</span>
+                </div>
+              </div>
+            </div>
+
+            <div id="risk-banner-card" class="md:col-span-12 lg:col-span-4 bg-error-container rounded-xl ambient-shadow p-6 flex flex-col justify-between border-l-4 border-error">
+              <div>
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="material-symbols-outlined text-error text-2xl" data-icon="warning">warning</span>
+                  <h3 id="risk-banner-title" class="text-lg font-bold text-on-error-container">Overall Risk: HIGH RISK</h3>
+                </div>
+                <p id="risk-banner-desc" class="text-xs text-on-error-container/90 leading-relaxed font-medium">
+                  Multiple intelligence signals indicate immediate attention is required. Farm Risk Score: 88/100.
+                </p>
+              </div>
+              <div class="mt-4 flex items-center gap-3">
+                <div id="risk-score-pill" class="bg-error text-on-error px-4 py-2 rounded-lg font-extrabold text-base shadow-sm">
+                  88% Score
+                </div>
+                <span class="text-xs font-bold text-on-error-container" data-i18n="high_alert_zone">उच्च चेतावनी क्षेत्र</span>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+            <div class="md:col-span-6 bg-surface-container-lowest rounded-xl ambient-shadow p-6 space-y-4 border border-outline-variant/30">
+              <h3 class="text-base font-bold text-primary flex items-center gap-2 border-b border-surface-variant pb-3" data-i18n="xai_title">
+                <span class="material-symbols-outlined text-primary" data-icon="analytics">analytics</span> व्याख्यात्मक एआई (XAI) जोखिम कारक
+              </h3>
+              <div id="xai-container" class="space-y-3">
+                <!-- Populated via API -->
+              </div>
+            </div>
+
+            <div class="md:col-span-6 bg-surface-container-lowest rounded-xl ambient-shadow p-6 space-y-4 border border-outline-variant/30">
+              <h3 class="text-base font-bold text-primary flex items-center gap-2 border-b border-surface-variant pb-3" data-i18n="guidance_title">
+                <span class="material-symbols-outlined text-secondary" data-icon="assignment">assignment</span> कार्रवाई योग्य मार्गदर्शन और क्या करें / क्या न करें
+              </h3>
+              
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div class="bg-secondary-container/30 border border-secondary/30 p-3 rounded-lg space-y-1.5">
+                  <h4 class="font-bold text-secondary flex items-center gap-1" data-i18n="dos_heading">
+                    <span class="material-symbols-outlined text-sm" data-icon="check_circle">check_circle</span> DO'S (क्या करें)
+                  </h4>
+                  <ul id="list-dos" class="list-disc list-inside text-on-surface space-y-1 font-medium"></ul>
+                </div>
+
+                <div class="bg-error-container/40 border border-error/30 p-3 rounded-lg space-y-1.5">
+                  <h4 class="font-bold text-error flex items-center gap-1" data-i18n="donts_heading">
+                    <span class="material-symbols-outlined text-sm" data-icon="cancel">cancel</span> DON'TS (क्या न करें)
+                  </h4>
+                  <ul id="list-donts" class="list-disc list-inside text-on-surface space-y-1 font-medium"></ul>
+                </div>
+              </div>
+
+              <div class="bg-surface p-3.5 rounded-lg border border-outline-variant/40 space-y-2 text-xs">
+                <div class="font-bold text-primary uppercase text-[11px] flex items-center gap-1.5" data-i18n="dosage_title">
+                  <span class="material-symbols-outlined text-sm" data-icon="science">science</span> सुरक्षित कीटनाशक खुराक निर्देश
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <div>
+                    <span class="text-on-surface-variant block text-[10px]" data-i18n="lbl_chem">रासायनिक दवा:</span>
+                    <strong id="chem-name" class="text-primary font-bold">Tricyclazole 75% WP</strong>
+                  </div>
+                  <div>
+                    <span class="text-on-surface-variant block text-[10px]" data-i18n="lbl_dose">सुरक्षित खुराक:</span>
+                    <strong id="chem-dose" class="text-secondary font-bold">0.6 g / L water</strong>
+                  </div>
+                  <div>
+                    <span class="text-on-surface-variant block text-[10px]" data-i18n="lbl_safety">प्रतीक्षा अवधि:</span>
+                    <strong id="chem-wait" class="text-error font-bold">21 Days Wait</strong>
+                  </div>
+                </div>
+                <p class="text-[11px] text-on-surface-variant pt-1 border-t border-outline-variant/30">
+                  🌱 <strong data-i18n="lbl_organic">जैविक विकल्प:</strong> <span id="organic-remedy">Neem Oil (10,000 ppm) @ 3 ml/L</span>
+                </p>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- VIEW 2: EXPERT WEB PORTAL & LIVE CROP RISK MAP            -->
+    <!-- ======================================================== -->
+    <div id="view-expert" class="space-y-6 hidden">
+      
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 class="text-3xl font-extrabold text-primary" data-i18n="map_title">लाइव फसल जोखिम मानचित्र</h1>
+          <p class="text-on-surface-variant text-sm mt-1" data-i18n="map_desc">उपग्रह डेटा के साथ क्षेत्रवार उभरते जोखिमों की निगरानी करें।</p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button id="btn-toggle-ndvi" onclick="toggleNDVILayer()" class="bg-surface hover:bg-surface-variant border border-outline-variant text-xs px-3.5 py-2.5 rounded-lg font-bold text-primary transition flex items-center gap-1.5 shadow-sm">
+            <span class="material-symbols-outlined text-base" data-icon="layers">layers</span> Toggle Sentinel-2 NDVI Overlay
+          </button>
+          <button onclick="openBroadcastModal()" class="bg-error hover:bg-error/90 text-on-error text-xs px-4 py-2.5 rounded-lg font-bold shadow-sm transition flex items-center gap-1.5" data-i18n="btn_broadcast">
+            <span class="material-symbols-outlined text-base" data-icon="campaign">campaign</span> आपातकालीन चेतावनी जारी करें
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Map Workspace Container -->
+      <div class="relative w-full h-[640px] rounded-2xl overflow-hidden ambient-shadow border border-outline-variant/30">
+        <div id="hotspot-map" class="w-full h-full z-0"></div>
+
+        <!-- Left Filter Panel Overlay -->
+        <div class="absolute top-6 left-6 w-80 bg-surface/95 backdrop-blur-md rounded-xl ambient-shadow p-5 z-10 slide-in-left border border-outline-variant/30">
+          <div class="flex items-center gap-2 mb-4 border-b border-outline-variant/30 pb-3">
+            <span class="material-symbols-outlined text-primary text-xl" data-icon="filter_list">filter_list</span>
+            <h2 class="font-bold text-base text-primary" data-i18n="filter_title">मानचित्र डेटा फ़िल्टर करें</h2>
+          </div>
+          
+          <div class="space-y-3.5 text-xs">
+            <div>
+              <label class="block font-bold text-on-surface-variant mb-1" data-i18n="lbl_select_crop">फसल का चयन करें</label>
+              <select id="filter-crop" onchange="applyFilters()" class="w-full bg-surface-container-low border border-outline-variant rounded-lg py-2 px-3 font-semibold text-on-surface focus:border-primary">
+                <option value="all" data-i18n="opt_all_crops">सभी फसलें</option>
+                <option value="rice">धान (Rice)</option>
+                <option value="wheat">गेहूं (Wheat)</option>
+                <option value="tomato">टमाटर (Tomato)</option>
+                <option value="cotton">कपास (Cotton)</option>
+                <option value="potato">आलू (Potato)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-bold text-on-surface-variant mb-1" data-i18n="lbl_select_district">ज़िला / क्षेत्र चुनें</label>
+              <select id="filter-district" onchange="applyFilters()" class="w-full bg-surface-container-low border border-outline-variant rounded-lg py-2 px-3 font-semibold text-on-surface focus:border-primary">
+                <option value="all" data-i18n="opt_all_districts">महाराष्ट्र (सभी ज़िले)</option>
+                <option value="jalna">जालना ज़िला</option>
+                <option value="ambad">अंबड़ तहसील</option>
+                <option value="partur">परतूर क्षेत्र</option>
+                <option value="badnapur">बदनापुर ज़ोन</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-bold text-on-surface-variant mb-2" data-i18n="lbl_risk_threshold">जोखिम स्तर</label>
+              <div class="flex flex-wrap gap-1.5">
+                <button onclick="filterRisk('all')" class="px-2.5 py-1 rounded-full border border-outline-variant text-[11px] font-bold text-on-surface hover:bg-surface-container" data-i18n="opt_all">सभी</button>
+                <button onclick="filterRisk('Low')" class="px-2.5 py-1 rounded-full border border-secondary text-[11px] font-bold bg-secondary-container/30 text-secondary" data-i18n="risk_low_lbl">कम</button>
+                <button onclick="filterRisk('Medium')" class="px-2.5 py-1 rounded-full border border-amber-500 text-[11px] font-bold bg-amber-100 text-amber-900" data-i18n="risk_mod_lbl">मध्यम</button>
+                <button onclick="filterRisk('High')" class="px-2.5 py-1 rounded-full border border-error text-[11px] font-bold bg-error-container text-on-error-container" data-i18n="risk_high_lbl">उच्च</button>
+              </div>
+            </div>
+          </div>
+
+          <button onclick="applyFilters()" class="w-full mt-4 bg-primary text-on-primary py-2 rounded-lg font-bold text-xs shadow-sm hover:bg-primary-container transition-colors" data-i18n="btn_apply_filters">
+            फ़िल्टर लागू करें
+          </button>
+        </div>
+
+        <!-- Right Side Panel (Selected Hotspot Intelligence) -->
+        <div id="hotspot-panel" class="absolute top-6 right-6 w-96 bg-surface/95 backdrop-blur-md rounded-xl ambient-shadow flex flex-col z-10 slide-in-right border-l-4 border-error border-y border-r border-outline-variant/30 hidden">
+          <div class="h-28 rounded-t-xl bg-primary-container relative overflow-hidden flex items-end p-4">
+            <div class="absolute inset-0 bg-gradient-to-t from-primary/90 to-transparent z-10"></div>
+            <div class="relative z-20">
+              <h3 id="panel-district-title" class="text-lg font-extrabold text-white">Jalna District Cluster</h3>
+              <p id="panel-district-sub" class="text-xs text-white/80 font-medium">Maharashtra, India • High Risk Zone</p>
+            </div>
+            <button onclick="closeHotspotPanel()" class="absolute top-3 right-3 z-20 text-white/80 hover:text-white">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <div class="p-5 space-y-4 text-xs">
+            <div class="flex justify-between items-center border-b border-outline-variant/30 pb-3">
+              <div>
+                <span class="font-bold text-on-surface-variant uppercase text-[10px]" data-i18n="current_risk">वर्तमान जोखिम</span>
+                <div class="flex items-center gap-2 mt-1">
+                  <span id="panel-risk-dot" class="w-3 h-3 rounded-full bg-error shadow-[0_0_8px_rgba(186,26,26,0.6)]"></span>
+                  <span id="panel-risk-status" class="font-extrabold text-base text-error">High Risk</span>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="font-bold text-on-surface-variant uppercase text-[10px]" data-i18n="outbreak_trend">प्रकोप प्रवृत्ति</span>
+                <div class="flex items-center justify-end gap-1 mt-1 text-error font-bold">
+                  <span class="material-symbols-outlined text-sm">trending_up</span>
+                  <span data-i18n="trend_surging">तेजी से बढ़ रहा है</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-surface-container-low p-3 rounded-lg ambient-shadow-sm border border-outline-variant/30">
+                <span class="material-symbols-outlined text-primary text-xl mb-1">assignment_late</span>
+                <p id="panel-active-reports" class="text-xl font-extrabold text-primary">5</p>
+                <span class="font-bold text-on-surface-variant text-[10px] uppercase" data-i18n="lbl_active_sub">सक्रिय रिपोर्ट</span>
+              </div>
+              <div class="bg-surface-container-low p-3 rounded-lg ambient-shadow-sm border-l-2 border-error border-outline-variant/30">
+                <span class="material-symbols-outlined text-error text-xl mb-1">landscape</span>
+                <p id="panel-high-farms" class="text-xl font-extrabold text-error">3</p>
+                <span class="font-bold text-on-surface-variant text-[10px] uppercase" data-i18n="lbl_high_farms">उच्च जोखिम खेत</span>
+              </div>
+            </div>
+
+            <div>
+              <span class="font-bold text-on-surface uppercase text-[10px] block mb-1.5" data-i18n="threats_identified">पहचाने गए मुख्य खतरे</span>
+              <div id="panel-threat-tags" class="flex flex-wrap gap-1.5">
+                <span class="px-2.5 py-1 bg-surface-container-high rounded-full font-bold text-[11px] text-primary border border-outline-variant/30">Rice Blast ( धान झुलसा )</span>
+                <span class="px-2.5 py-1 bg-surface-container-high rounded-full font-bold text-[11px] text-error border border-outline-variant/30">Wheat Yellow Rust</span>
+              </div>
+            </div>
+
+            <button onclick="openBroadcastModal()" class="w-full bg-primary text-on-primary py-2.5 rounded-lg font-bold text-xs shadow-sm hover:bg-primary-container transition-all flex justify-center items-center gap-2" data-i18n="btn_dispatch_alert">
+              <span class="material-symbols-outlined text-base">campaign</span> किसानों को चेतावनी भेजें
+            </button>
+          </div>
+        </div>
+
+        <!-- Bottom Legend Floating Bar -->
+        <div class="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-surface/95 backdrop-blur-md rounded-full ambient-shadow px-6 py-2.5 z-10 fade-in-up flex items-center gap-5 border border-outline-variant/30 text-xs">
+          <span class="font-bold text-primary mr-1 border-r border-outline-variant/30 pr-4" data-i18n="risk_scale">जोखिम पैमाना</span>
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-secondary-container"></span>
+            <span class="font-semibold text-on-surface-variant" data-i18n="risk_low_lbl">कम</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-[#ffd54f]"></span>
+            <span class="font-semibold text-on-surface-variant" data-i18n="risk_mod_lbl">मध्यम</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-[#ff9800]"></span>
+            <span class="font-semibold text-on-surface-variant" data-i18n="risk_high_lbl">उच्च</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-error"></span>
+            <span class="font-semibold text-on-surface-variant" data-i18n="risk_crit_lbl">गंभीर</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Expert Validation Table -->
+      <div class="bg-surface-container-lowest rounded-xl ambient-shadow p-6 space-y-4 border border-outline-variant/30">
+        <h3 class="text-lg font-bold text-primary flex items-center gap-2" data-i18n="expert_dashboard_title">
+          <span class="material-symbols-outlined text-primary" data-icon="verified_user">verified_user</span> विशेषज्ञ समीक्षा एवं सत्यापन डैशबोर्ड
+        </h3>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-on-surface">
+            <thead class="bg-surface-container-low text-primary uppercase text-[10px] font-bold border-b border-outline-variant/40">
+              <tr>
+                <th class="p-3" data-i18n="th_report_id">रिपोर्ट आईडी</th>
+                <th class="p-3" data-i18n="th_farmer">किसान</th>
+                <th class="p-3" data-i18n="th_village">गांव</th>
+                <th class="p-3" data-i18n="th_crop">फसल</th>
+                <th class="p-3" data-i18n="th_disease">रोग</th>
+                <th class="p-3" data-i18n="th_risk_score">जोखिम स्कोर</th>
+                <th class="p-3" data-i18n="th_status">स्थिति</th>
+                <th class="p-3" data-i18n="th_action">कार्रवाई</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-reports-body" class="divide-y divide-outline-variant/30">
+              <!-- Populated via API -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Mobile Bottom Navigation Bar -->
+  <div class="md:hidden fixed bottom-0 w-full bg-surface border-t border-outline-variant/10 pb-safe z-50 flex justify-around py-2.5">
+    <button onclick="switchMode('farmer'); window.scrollTo({top: 0, behavior: 'smooth'});" class="flex flex-col items-center text-primary">
+      <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+      <span class="text-[10px] mt-0.5 font-bold" data-i18n="mob_nav_dash">डैशबोर्ड</span>
+    </button>
+    <button onclick="scrollToScanner()" class="flex flex-col items-center text-on-surface-variant hover:text-primary">
+      <span class="material-symbols-outlined text-xl">center_focus_weak</span>
+      <span class="text-[10px] mt-0.5 font-semibold" data-i18n="mob_nav_scan">स्कैन</span>
+    </button>
+    <button onclick="switchMode('expert')" class="flex flex-col items-center text-on-surface-variant hover:text-primary">
+      <span class="material-symbols-outlined text-xl">map</span>
+      <span class="text-[10px] mt-0.5 font-semibold" data-i18n="mob_nav_map">मानचित्र</span>
+    </button>
+  </div>
+
+  <!-- Emergency Broadcast Modal -->
+  <div id="modal-broadcast" class="fixed inset-0 bg-primary/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-surface-container-lowest max-w-md w-full rounded-xl p-6 space-y-4 border border-outline-variant shadow-2xl">
+      <div class="flex items-center justify-between border-b border-outline-variant pb-3">
+        <h3 class="text-base font-bold text-primary flex items-center gap-2" data-i18n="modal_alert_title">
+          <span class="material-symbols-outlined text-error" data-icon="campaign">campaign</span> क्षेत्रीय चेतावनी जारी करें
+        </h3>
+        <button onclick="closeBroadcastModal()" class="text-outline hover:text-primary"><span class="material-symbols-outlined" data-icon="close">close</span></button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-on-surface mb-1" data-i18n="lbl_target_village">लक्ष्य गांव क्षेत्र</label>
+          <input type="text" id="alert-village" value="Jalna Central & Surrounding Radius" class="w-full bg-surface border border-outline-variant rounded-lg px-3 py-2 text-sm text-primary">
+        </div>
+        <div>
+          <label class="block font-bold text-on-surface mb-1" data-i18n="lbl_radius">त्रिज्या (किमी)</label>
+          <select id="alert-radius" class="w-full bg-surface border border-outline-variant rounded-lg px-3 py-2 text-sm text-primary">
+            <option value="5">5 km Radius</option>
+            <option value="10" selected>10 km Radius</option>
+            <option value="20">20 km Radius</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-bold text-on-surface mb-1" data-i18n="lbl_sms_text">एसएमएस चेतावनी संदेश</label>
+          <textarea id="alert-msg-hi" rows="3" class="w-full bg-surface border border-outline-variant rounded-lg px-3 py-2 text-xs text-primary">चेतावनी: आपके क्षेत्र में धान का झुलसा रोग (Rice Blast) तेजी से फैल रहा है। तुरंत ट्राइसाइक्लाज़ोल 0.6g/L का छिड़काव करें।</textarea>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 pt-2">
+        <button onclick="sendBroadcastAlert()" class="flex-1 bg-error hover:bg-error/90 text-on-error font-bold py-2.5 rounded-lg text-xs shadow-sm" data-i18n="btn_dispatch_now">
+          तुरंत चेतावनी जारी करें
+        </button>
+        <button onclick="closeBroadcastModal()" class="bg-surface-variant text-on-surface-variant px-4 py-2.5 rounded-lg text-xs font-bold" data-i18n="btn_cancel">
+          रद्द करें
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Client Script & Multilingual i18n System -->
+  <script>
+    let currentLang = 'hi';
+    let currentMode = 'farmer';
+    let leafletMap = null;
+    let ndviLayerGroup = null;
+    let markersLayerGroup = null;
+    let isNdviVisible = false;
+    let currentReportPayload = null;
+
+    // Multilingual Dictionary (Preserving Main Brand Headlines like TERRASYNC)
+    const I18N = {
+      hi: {
+        nav_dashboard: "डैशबोर्ड और स्कैनर",
+        nav_risk_map: "लाइव जोखिम मानचित्र और एक्सपर्ट पोर्टल",
+        greeting_title: "शुभ प्रभात, रमेश 👋",
+        greeting_sub: "यहाँ आपकी फसल स्वास्थ्य अवलोकन और एआई चेतावनी प्रणाली है।",
+        hero_title: "फसल स्वास्थ्य अवलोकन",
+        hero_good: "अच्छा",
+        hero_desc: "आपकी फसल का स्वास्थ्य वर्तमान में बहुत अच्छा है। जालना सेंट्रल में आदर्श नमी और फसल संतुलन पाया गया है।",
+        tag_crops_active: "धान एवं गेहूं सक्रिय",
+        updated_today: "आज अद्यतन किया गया",
+        sensor_sub: "लाइव सेंसर एवं उपग्रह सिग्नल",
+        bento_scan_title: "फसल स्कैन करें",
+        bento_scan_desc: "एआई रोग पहचान",
+        bento_forecast_title: "पूर्वानुमान",
+        bento_forecast_desc: "मौसम और जोखिम",
+        bento_pests_title: "कीट चेतावनी",
+        bento_pests_desc: "कीट जाल डेटा",
+        bento_risk_title: "जोखिम मानचित्र",
+        bento_risk_desc: "स्थानिक विश्लेषण",
+        recent_alerts_title: "हाल की चेतावनियाँ",
+        btn_view_map: "मानचित्र देखें",
+        risk_high_tag: "उच्च जोखिम",
+        risk_med_tag: "मध्यम जोखिम",
+        risk_low_tag: "कम जोखिम",
+        alert_1_msg: "धान के झुलसा रोग (Rice Blast) के बीजाणुओं में वृद्धि",
+        alert_2_msg: "अत्यधिक आर्द्रता (>85%) का मौसम पूर्वानुमान",
+        alert_3_msg: "फसल स्कैन एवं मृदा नमी का सत्यापन पूर्ण",
+        weekly_overview_title: "साप्ताहिक अवलोकन",
+        last_7_days: "पिछले 7 दिन",
+        stat_scans: "फसल जांच",
+        stat_active_alerts: "सक्रिय चेतावनियाँ",
+        val_medium: "मध्यम",
+        stat_weather_risk: "मौसम जोखिम",
+        val_healthy: "स्वस्थ",
+        stat_overall_status: "समग्र स्थिति",
+        scanner_title: "एआई फसल स्कैनर",
+        scanner_desc: "तुरंत रोग की पहचान के लिए पौधे की पत्ती की फोटो अपलोड करें या खींचें।",
+        btn_listen: "आवाज में सुनें",
+        drag_drop_title: "यहां अपनी फसल की फोटो खींचें या छोड़ें",
+        or_lbl: "या",
+        btn_upload: "फोटो अपलोड करें",
+        btn_take_photo: "फोटो लें",
+        crop_params_title: "फसल पैरामीटर",
+        lbl_select_crop: "फसल का चयन करें",
+        lbl_growth_stage: "वृद्धि का चरण",
+        quick_presets: "त्वरित सैंपल (Presets):",
+        btn_analyze: "एआई के साथ फसल की जांच करें",
+        ai_complete_title: "एआई विश्लेषण पूर्ण",
+        crop_id_title: "फसल पहचान और रोग",
+        detected_anomaly: "पहचाना गया विकार",
+        ai_confidence_title: "एआई सटीकता (Confidence)",
+        high_alert_zone: "उच्च चेतावनी क्षेत्र",
+        xai_title: "व्याख्यात्मक एआई (XAI) जोखिम कारक",
+        guidance_title: "कार्रवाई योग्य मार्गदर्शन और क्या करें / क्या न करें",
+        dos_heading: "क्या करें (DO'S)",
+        donts_heading: "क्या न करें (DON'TS)",
+        dosage_title: "सुरक्षित कीटनाशक खुराक निर्देश",
+        lbl_chem: "रासायनिक दवा:",
+        lbl_dose: "सुरक्षित खुराक:",
+        lbl_safety: "प्रतीक्षा अवधि:",
+        lbl_organic: "जैविक विकल्प:",
+        map_title: "लाइव फसल जोखिम मानचित्र",
+        map_desc: "उपग्रह डेटा के साथ क्षेत्रवार उभरते जोखिमों की निगरानी करें।",
+        btn_broadcast: "आपातकालीन चेतावनी जारी करें",
+        filter_title: "मानचित्र डेटा फ़िल्टर करें",
+        lbl_select_district: "ज़िला / क्षेत्र चुनें",
+        lbl_risk_threshold: "जोखिम स्तर",
+        opt_all_crops: "सभी फसलें",
+        opt_all_districts: "महाराष्ट्र (सभी ज़िले)",
+        opt_all: "सभी",
+        risk_low_lbl: "कम",
+        risk_mod_lbl: "मध्यम",
+        risk_high_lbl: "उच्च",
+        risk_crit_lbl: "गंभीर",
+        btn_apply_filters: "फ़िल्टर लागू करें",
+        current_risk: "वर्तमान जोखिम",
+        outbreak_trend: "प्रकोप प्रवृत्ति",
+        trend_surging: "तेजी से बढ़ रहा है",
+        lbl_active_sub: "सक्रिय रिपोर्ट",
+        lbl_high_farms: "उच्च जोखिम खेत",
+        threats_identified: "पहचाने गए मुख्य खतरे",
+        btn_dispatch_alert: "किसानों को चेतावनी भेजें",
+        risk_scale: "जोखिम पैमाना",
+        expert_dashboard_title: "विशेषज्ञ समीक्षा एवं सत्यापन डैशबोर्ड",
+        th_report_id: "रिपोर्ट आईडी",
+        th_farmer: "किसान",
+        th_village: "गांव",
+        th_crop: "फसल",
+        th_disease: "रोग",
+        th_risk_score: "जोखिम स्कोर",
+        th_status: "स्थिति",
+        th_action: "कार्रवाई",
+        mob_nav_dash: "डैशबोर्ड",
+        mob_nav_scan: "स्कैन",
+        mob_nav_map: "मानचित्र",
+        modal_alert_title: "क्षेत्रीय चेतावनी जारी करें",
+        lbl_target_village: "लक्ष्य गांव क्षेत्र",
+        lbl_radius: "त्रिज्या (किमी)",
+        lbl_sms_text: "एसएमएस चेतावनी संदेश",
+        btn_dispatch_now: "तुरंत चेतावनी जारी करें",
+        btn_cancel: "रद्द करें"
+      },
+      te: {
+        nav_dashboard: "డాష్‌బోర్డ్ & స్కానర్",
+        nav_risk_map: "లైవ్ రిస్క్ మ్యాప్ & నిపుణుల పోర్టల్",
+        greeting_title: "శుభోదయం, రమేష్ 👋",
+        greeting_sub: "ఇక్కడ మీ పంట ఆరోగ్య పరిశీలన మరియు AI ముందస్తు హెచ్చరిక వ్యవస్థ ఉంది.",
+        hero_title: "పంట ఆరోగ్య పరిశీలన",
+        hero_good: "మంచిది",
+        hero_desc: "మీ పంట ప్రస్తుతం ఆరోగ్యకరమైన స్థితిలో ఉంది. జాల్నా సెంట్రల్‌లో అనుకూలమైన తేమ లభించింది.",
+        tag_crops_active: "వరి మరియు గోధుమలు",
+        updated_today: "ఈరోజు తాజా సమాచారం",
+        sensor_sub: "లైవ్ సెన్సార్ & ఉపగ్రహ సిగ్నల్",
+        bento_scan_title: "పంటను స్కాన్ చేయండి",
+        bento_scan_desc: "AI వ్యాధి గుర్తింపు",
+        bento_forecast_title: "వాతావరణ అంచనా",
+        bento_forecast_desc: "వాతావరణం & రిస్క్‌లు",
+        bento_pests_title: "కీటకాల హెచ్చరిక",
+        bento_pests_desc: "కీటకాల కార్యకలాపాలు",
+        bento_risk_title: "రిస్క్ మ్యాప్",
+        bento_risk_desc: "ప్రాంతీయ విశ్లేషణ",
+        recent_alerts_title: "ఇటీవలి హెచ్చరికలు",
+        btn_view_map: "మ్యాప్ చూడండి",
+        risk_high_tag: "అధిక రిస్క్",
+        risk_med_tag: "మధ్యస్థ రిస్క్",
+        risk_low_tag: "తక్కువ రిస్క్",
+        alert_1_msg: "వరి అగ్గి తెగులు (Rice Blast) పెరిగే అవకాశం",
+        alert_2_msg: "అధిక తేమ (>85%) వాతావరణ హెచ్చరిక",
+        alert_3_msg: "పంట స్కాన్ & నేల తేమ నిర్ధారణ పూర్తయింది",
+        weekly_overview_title: "వారం వారీ సమీక్ష",
+        last_7_days: "గత 7 రోజులు",
+        stat_scans: "పంట స్కాన్లు",
+        stat_active_alerts: "యాక్టివ్ హెచ్చరికలు",
+        val_medium: "మధ్యస్థం",
+        stat_weather_risk: "వాతావరణ రిస్క్",
+        val_healthy: "ఆరోగ్యకరం",
+        stat_overall_status: "మొత్తం పరిస్థితి",
+        scanner_title: "AI పంట స్కాన్",
+        scanner_desc: "వ్యాధిని గుర్తించడానికి మొక్క ఆకు ఫోటోను అప్‌లోడ్ చేయండి లేదా తీయండి.",
+        btn_listen: "వాయిస్ వినండి",
+        drag_drop_title: "ఇక్కడ మీ పంట ఫోటోను లాగండి లేదా వదలండి",
+        or_lbl: "లేదా",
+        btn_upload: "ఫోటో అప్‌లోడ్ చేయండి",
+        btn_take_photo: "ఫోటో తీయండి",
+        crop_params_title: "పంట వివరాలు",
+        lbl_select_crop: "పంటను ఎంచుకోండి",
+        lbl_growth_stage: "పెరుగుదల దశ",
+        quick_presets: "త్వరిత శాంపిల్స్:",
+        btn_analyze: "AI ద్వారా పంటను విశ్లేషించండి",
+        ai_complete_title: "AI విశ్లేషణ పూర్తయింది",
+        crop_id_title: "పంట గుర్తింపు & తెగులు",
+        detected_anomaly: "గుర్తించిన సమస్య",
+        ai_confidence_title: "AI ఖచ్చితత్వం (Confidence)",
+        high_alert_zone: "అధిక హెచ్చరిక ప్రాంతం",
+        xai_title: "వివరణాత్మక AI (XAI) రిస్క్ కారకాలు",
+        guidance_title: "నివారణ చర్యలు & చేయవలసినవి / చేయకూడనివి",
+        dos_heading: "చేయవలసినవి (DO'S)",
+        donts_heading: "చేయకూడనివి (DON'TS)",
+        dosage_title: "సురక్షిత మందుల మోతాదు మార్గదర్శి",
+        lbl_chem: "రసాయన ఔషధం:",
+        lbl_dose: "సురక్షిత మోతాదు:",
+        lbl_safety: "వేచి ఉండే సమయం:",
+        lbl_organic: "సేంద్రీయ ప్రత్యామ్నాయం:",
+        map_title: "లైవ్ పంట రిస్క్ మ్యాప్",
+        map_desc: "ఉపగ్రహ డేటాతో ప్రాంతీయ రిస్క్‌లను పర్యవేక్షించండి.",
+        btn_broadcast: "అత్యవసర హెచ్చరిక జారీ చేయండి",
+        filter_title: "మ్యాప్ డేటాను ఫిల్టర్ చేయండి",
+        lbl_select_district: "జిల్లాను ఎంచుకోండి",
+        lbl_risk_threshold: "రిస్క్ స్థాయి",
+        opt_all_crops: "అన్ని పంటలు",
+        opt_all_districts: "అన్ని జిల్లాలు",
+        opt_all: "అన్నీ",
+        risk_low_lbl: "తక్కువ",
+        risk_mod_lbl: "మధ్యస్థం",
+        risk_high_lbl: "అధికం",
+        risk_crit_lbl: "తీవ్రమైన",
+        btn_apply_filters: "ఫిల్టర్లు వర్తించండి",
+        current_risk: "ప్రస్తుత రిస్క్",
+        outbreak_trend: "వ్యాప్తి ధోరణి",
+        trend_surging: "వేగంగా పెరుగుతోంది",
+        lbl_active_sub: "యాక్టివ్ రిపోర్టులు",
+        lbl_high_farms: "అధిక రిస్క్ పొలాలు",
+        threats_identified: "గుర్తించిన ప్రధాన ముప్పులు",
+        btn_dispatch_alert: "రైతులకు హెచ్చరిక పంపండి",
+        risk_scale: "రిస్క్ స్కేల్",
+        expert_dashboard_title: "నిపుణుల పరిశీలన & నిర్ధారణ డాష్‌బోర్డ్",
+        th_report_id: "రిపోర్ట్ ఐడి",
+        th_farmer: "రైతు",
+        th_village: "గ్రామం",
+        th_crop: "పంట",
+        th_disease: "తెగులు",
+        th_risk_score: "రిస్క్ స్కోరు",
+        th_status: "స్థితి",
+        th_action: "చర్య",
+        mob_nav_dash: "డాష్‌బోర్డ్",
+        mob_nav_scan: "స్కాన్",
+        mob_nav_map: "మ్యాప్",
+        modal_alert_title: "ప్రాంతీయ హెచ్చరిక జారీ చేయండి",
+        lbl_target_village: "లక్ష్య గ్రామం",
+        lbl_radius: "వ్యాసార్థం (కిమీ)",
+        lbl_sms_text: "SMS హెచ్చరిక సమాచారం",
+        btn_dispatch_now: "వెంటనే పంపండి",
+        btn_cancel: "రద్దు చేయండి"
+      },
+      pa: {
+        nav_dashboard: "ਡੈਸ਼ਬੋਰਡ ਅਤੇ ਸਕੈਨਰ",
+        nav_risk_map: "ਲਾਈਵ ਰਿਸਕ ਮੈਪ ਅਤੇ ਐਕਸਪਰਟ ਪੋਰਟਲ",
+        greeting_title: "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ, ਰਮੇਸ਼ 👋",
+        greeting_sub: "ਇੱਥੇ ਤੁਹਾਡੀ ਫਸਲ ਦੀ ਸਿਹਤ ਦੀ ਸਮੀਖਿਆ ਅਤੇ AI ਚੇਤਾਵਨੀ ਪ੍ਰਣਾਲੀ ਹੈ।",
+        hero_title: "ਫਸਲ ਸਿਹਤ ਸਮੀਖਿਆ",
+        hero_good: "ਵਧੀਆ",
+        hero_desc: "ਤੁਹਾਡੀ ਫਸਲ ਵਰਤਮਾਨ ਵਿੱਚ ਸਿਹਤਮੰਦ ਸਥਿਤੀ ਵਿੱਚ ਹੈ। ਜਾਲਨਾ ਵਿੱਚ ਅਨੁਕੂਲ ਨਮੀ ਪਾਈ ਗਈ ਹੈ।",
+        tag_crops_active: "ਝੋਨਾ ਅਤੇ ਕਣਕ",
+        updated_today: "ਅੱਜ ਅਪਡੇਟ ਕੀਤਾ",
+        sensor_sub: "ਲਾਈਵ ਸੈਂਸਰ ਅਤੇ ਉਪਗ੍ਰਹਿ ਸਿਗਨਲ",
+        bento_scan_title: "ਫਸਲ ਸਕੈਨ ਕਰੋ",
+        bento_scan_desc: "AI ਬੀਮਾਰੀ ਦੀ ਪਛਾਣ",
+        bento_forecast_title: "ਮੌਸਮ ਭਵਿੱਖਬਾਣੀ",
+        bento_forecast_desc: "ਮੌਸਮ ਅਤੇ ਜੋਖਮ",
+        bento_pests_title: "ਕੀੜੇ-ਮਕੌੜੇ",
+        bento_pests_desc: "ਕੀੜੇ ਮੌਜੂਦਗੀ",
+        bento_risk_title: "ਰਿਸਕ ਮੈਪ",
+        bento_risk_desc: "ਖੇਤਰੀ ਵਿਸ਼ਲੇਸ਼ਣ",
+        recent_alerts_title: "ਹਾਲੀਆ ਚੇਤਾਵਨੀਆਂ",
+        btn_view_map: "ਨਕਸ਼ਾ ਵੇਖੋ",
+        risk_high_tag: "ਉੱਚ ਜੋਖਮ",
+        risk_med_tag: "ਦਰਮਿਆਨਾ ਜੋਖਮ",
+        risk_low_tag: "ਘੱਟ ਜੋਖਮ",
+        alert_1_msg: "ਝੋਨੇ ਦੇ ਬਲਾਸਟ ਰੋਗ (Rice Blast) ਵਿੱਚ ਵਾਧਾ",
+        alert_2_msg: "ਜ਼ਿਆਦਾ ਸਿੱਲ੍ਹ (>85%) ਦੀ ਚੇਤਾਵਨੀ",
+        alert_3_msg: "ਫਸਲ ਸਕੈਨ ਅਤੇ ਨਮੀ ਦੀ ਜਾਂਚ ਪੂਰੀ",
+        weekly_overview_title: "ਹਫ਼ਤਾਵਾਰੀ ਸਮੀਖਿਆ",
+        last_7_days: "ਪਿਛਲੇ 7 ਦਿਨ",
+        stat_scans: "ਫਸਲ ਸਕੈਨ",
+        stat_active_alerts: "ਐਕਟਿਵ ਚੇਤਾਵਨੀਆਂ",
+        val_medium: "ਦਰਮਿਆਨਾ",
+        stat_weather_risk: "ਮੌਸਮ ਜੋਖਮ",
+        val_healthy: "ਸਿਹਤਮੰਦ",
+        stat_overall_status: "ਕੁੱਲ ਸਥਿਤੀ",
+        scanner_title: "AI ਫਸਲ ਸਕੈਨਰ",
+        scanner_desc: "ਬੀਮਾਰੀ ਦੀ ਤੁਰੰਤ ਪਛਾਣ ਲਈ ਪੌਦੇ ਦੇ ਪੱਤੇ ਦੀ ਫੋਟੋ ਅੱਪਲੋਡ ਕਰੋ ਜਾਂ ਖਿੱਚੋ।",
+        btn_listen: "ਆਵਾਜ਼ ਵਿੱਚ ਸੁਣੋ",
+        drag_drop_title: "ਇੱਥੇ ਆਪਣੀ ਫਸਲ ਦੀ ਫੋਟੋ ਖਿੱਚੋ ਜਾਂ ਛੱਡੋ",
+        or_lbl: "ਜਾਂ",
+        btn_upload: "ਫੋਟੋ ਅੱਪਲੋਡ ਕਰੋ",
+        btn_take_photo: "ਫੋਟੋ ਲਵੋ",
+        crop_params_title: "ਫਸਲ ਦੇ ਵੇਰਵੇ",
+        lbl_select_crop: "ਫਸਲ ਦੀ ਚੋਣ ਕਰੋ",
+        lbl_growth_stage: "ਵਾਧੇ ਦਾ ਪੜਾਅ",
+        quick_presets: "ਤੁਰੰਤ ਸੈਂਪਲ:",
+        btn_analyze: "AI ਨਾਲ ਫਸਲ ਦੀ ਜਾਂਚ ਕਰੋ",
+        ai_complete_title: "AI ਵਿਸ਼ਲੇਸ਼ਣ ਪੂਰਾ",
+        crop_id_title: "ਫਸਲ ਪਛਾਣ ਅਤੇ ਬੀਮਾਰੀ",
+        detected_anomaly: "ਪਛਾਣਿਆ ਗਿਆ ਰੋਗ",
+        ai_confidence_title: "AI ਸਟੀਕਤਾ (Confidence)",
+        high_alert_zone: "ਉੱਚ ਚੇਤਾਵਨੀ ਖੇਤਰ",
+        xai_title: "ਵਿਆਖਿਆਤਮਕ AI (XAI) ਜੋਖਮ ਕਾਰਕ",
+        guidance_title: "ਕਾਰਵਾਈ ਯੋਗ ਮਾਰਗਦਰਸ਼ਨ ਅਤੇ ਕੀ ਕਰੋ / ਕੀ ਨਾ ਕਰੋ",
+        dos_heading: "ਕੀ ਕਰੋ (DO'S)",
+        donts_heading: "ਕੀ ਨਾ ਕਰੋ (DON'TS)",
+        dosage_title: "ਸੁਰੱਖਿਅਤ ਕੀਟਨਾਸ਼ਕ ਖੁਰਾਕ ਨਿਰਦੇਸ਼",
+        lbl_chem: "ਰਸਾਇਣਕ ਦਵਾਈ:",
+        lbl_dose: "ਸੁਰੱਖਿਅਤ ਖੁਰਾਕ:",
+        lbl_safety: "ਉਡੀਕ ਸਮਾਂ:",
+        lbl_organic: "ਜੈਵਿਕ ਹੱਲ:",
+        map_title: "ਲਾਈਵ ਫਸਲ ਰਿਸਕ ਮੈਪ",
+        map_desc: "ਉਪਗ੍ਰਹਿ ਡੇਟਾ ਨਾਲ ਜੋਖਮਾਂ ਦੀ ਨਿਗਰਾਨੀ ਕਰੋ।",
+        btn_broadcast: "ਚੇਤਾਵਨੀ ਜਾਰੀ ਕਰੋ",
+        filter_title: "ਮੈਪ ਡੇਟਾ ਫਿਲਟਰ ਕਰੋ",
+        lbl_select_district: "ਜ਼ਿਲ੍ਹਾ ਚੁਣੋ",
+        lbl_risk_threshold: "ਜੋਖਮ ਪੱਧਰ",
+        opt_all_crops: "ਸਾਰੀਆਂ ਫਸਲਾਂ",
+        opt_all_districts: "ਸਾਰੇ ਜ਼ਿਲ੍ਹੇ",
+        opt_all: "ਸਾਰੇ",
+        risk_low_lbl: "ਘੱਟ",
+        risk_mod_lbl: "ਦਰਮਿਆਨਾ",
+        risk_high_lbl: "ਉੱਚ",
+        risk_crit_lbl: "ਗੰਭੀਰ",
+        btn_apply_filters: "ਫਿਲਟਰ ਲਾਗੂ ਕਰੋ",
+        current_risk: "ਮੌਜੂਦਾ ਜੋਖਮ",
+        outbreak_trend: "ਬੀਮਾਰੀ ਫੈਲਾਅ",
+        trend_surging: "ਤੇਜ਼ੀ ਨਾਲ ਵਧ ਰਿਹਾ ਹੈ",
+        lbl_active_sub: "ਐਕਟਿਵ ਰਿਪੋਰਟਾਂ",
+        lbl_high_farms: "ਉੱਚ ਜੋਖਮ ਖੇਤ",
+        threats_identified: "ਮੁੱਖ ਖਤਰੇ",
+        btn_dispatch_alert: "ਕਿਸਾਨਾਂ ਨੂੰ ਚੇਤਾਵਨੀ ਭੇਜੋ",
+        risk_scale: "ਜੋਖਮ ਪੈਮਾਨਾ",
+        expert_dashboard_title: "ਮਾਹਰ ਸਮੀਖਿਆ ਡੈਸ਼ਬੋਰਡ",
+        th_report_id: "ਰਿਪੋਰਟ ID",
+        th_farmer: "ਕਿਸਾਨ",
+        th_village: "ਪਿੰਡ",
+        th_crop: "ਫਸਲ",
+        th_disease: "ਬੀਮਾਰੀ",
+        th_risk_score: "ਜੋਖਮ ਸਕੋਰ",
+        th_status: "ਸਥਿਤੀ",
+        th_action: "ਕਾਰਵਾਈ",
+        mob_nav_dash: "ਡੈਸ਼ਬੋਰਡ",
+        mob_nav_scan: "ਸਕੈਨ",
+        mob_nav_map: "ਨਕਸ਼ਾ",
+        modal_alert_title: "ਚੇਤਾਵਨੀ ਜਾਰੀ ਕਰੋ",
+        lbl_target_village: "ਨਿਸ਼ਾਨਾ ਪਿੰਡ",
+        lbl_radius: "ਘੇਰਾ (ਕਿ.ਮੀ.)",
+        lbl_sms_text: "SMS ਸੁਨੇਹਾ",
+        btn_dispatch_now: "ਤੁਰੰਤ ਭੇਜੋ",
+        btn_cancel: "ਰੱਦ ਕਰੋ"
+      },
+      en: {
+        nav_dashboard: "Dashboard & Scanner",
+        nav_risk_map: "Live Risk Map & Expert Portal",
+        greeting_title: "Good Morning, Ramesh 👋",
+        greeting_sub: "Here's your farm health overview and AI early warning scanner today.",
+        hero_title: "Farm Health Overview",
+        hero_good: "GOOD",
+        hero_desc: "Your farm canopy is currently in a healthy condition. Optimal moisture & crop stage balance detected in Jalna Central.",
+        tag_crops_active: "Rice & Wheat Active",
+        updated_today: "Updated today",
+        sensor_sub: "Live IoT & Satellite Signal",
+        bento_scan_title: "SCAN CROP",
+        bento_scan_desc: "AI disease detection",
+        bento_forecast_title: "FORECAST",
+        bento_forecast_desc: "Weather & risks",
+        bento_pests_title: "PESTS",
+        bento_pests_desc: "Activity heatmaps",
+        bento_risk_title: "RISK MAP",
+        bento_risk_desc: "Spatial analysis",
+        recent_alerts_title: "Recent Alerts",
+        btn_view_map: "View Map",
+        risk_high_tag: "HIGH RISK",
+        risk_med_tag: "MEDIUM RISK",
+        risk_low_tag: "LOW RISK",
+        alert_1_msg: "Rice Blast Spore Surge Detected",
+        alert_2_msg: "High Humidity (>85%) Weather Forecast",
+        alert_3_msg: "Crop Scan & Soil Moisture Verified",
+        weekly_overview_title: "Weekly Overview",
+        last_7_days: "Last 7 Days",
+        stat_scans: "Crop Scans",
+        stat_active_alerts: "Active Alerts",
+        val_medium: "Medium",
+        stat_weather_risk: "Weather Risk",
+        val_healthy: "Healthy",
+        stat_overall_status: "Overall Status",
+        scanner_title: "AI Crop Scanner",
+        scanner_desc: "Upload or take a photo of your affected plant leaf for instant disease identification.",
+        btn_listen: "Listen Voice Advisory",
+        drag_drop_title: "Drag & drop your crop image here",
+        or_lbl: "or",
+        btn_upload: "Upload Image",
+        btn_take_photo: "Take Photo",
+        crop_params_title: "Crop Parameters",
+        lbl_select_crop: "Select Crop",
+        lbl_growth_stage: "Growth Stage",
+        quick_presets: "Quick Presets:",
+        btn_analyze: "Analyze Crop with AI",
+        ai_complete_title: "AI Analysis Complete",
+        crop_id_title: "Crop Identification & Disease",
+        detected_anomaly: "Detected Anomaly",
+        ai_confidence_title: "AI Confidence",
+        high_alert_zone: "High Alert Zone",
+        xai_title: "Explainable AI (XAI) Risk Factors",
+        guidance_title: "Actionable Guidance & Do's / Don'ts",
+        dos_heading: "DO'S",
+        donts_heading: "DON'TS",
+        dosage_title: "Safe Pesticide Dosage Guide",
+        lbl_chem: "Chemical Pesticide:",
+        lbl_dose: "Safe Dosage:",
+        lbl_safety: "Wait Period:",
+        lbl_organic: "Organic Alternative:",
+        map_title: "Live Crop Risk Map",
+        map_desc: "Monitor emerging crop disease and pest risks across regions with Sentinel-2 satellite ingestion.",
+        btn_broadcast: "Broadcast Emergency Alert",
+        filter_title: "Filter Map Data",
+        lbl_select_district: "Select District / Zone",
+        lbl_risk_threshold: "Risk Threshold",
+        opt_all_crops: "All Crops",
+        opt_all_districts: "Maharashtra (All Districts)",
+        opt_all: "All",
+        risk_low_lbl: "Low",
+        risk_mod_lbl: "Mod",
+        risk_high_lbl: "High",
+        risk_crit_lbl: "Crit",
+        btn_apply_filters: "Apply Filters",
+        current_risk: "Current Risk",
+        outbreak_trend: "Outbreak Trend",
+        trend_surging: "Surging",
+        lbl_active_sub: "Active Submissions",
+        lbl_high_farms: "High Risk Farms",
+        threats_identified: "Predominant Threats Identified",
+        btn_dispatch_alert: "Dispatch Alert to Farmers",
+        risk_scale: "Risk Scale",
+        expert_dashboard_title: "Expert-in-the-Loop Validation Dashboard",
+        th_report_id: "Report ID",
+        th_farmer: "Farmer",
+        th_village: "Village",
+        th_crop: "Crop",
+        th_disease: "Detected Disease",
+        th_risk_score: "Risk Score",
+        th_status: "Status",
+        th_action: "Action",
+        mob_nav_dash: "Dashboard",
+        mob_nav_scan: "Scan",
+        mob_nav_map: "Map",
+        modal_alert_title: "Dispatch Emergency Broadcast",
+        lbl_target_village: "Target Village Zone",
+        lbl_radius: "Radius (km)",
+        lbl_sms_text: "Hindi Warning SMS Text",
+        btn_dispatch_now: "Dispatch Regional Alert",
+        btn_cancel: "Cancel"
+      }
+    };
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/static/sw.js').catch(err => console.log('SW Register:', err));
+    }
+
+    function switchMode(mode) {
+      currentMode = mode;
+      document.getElementById('view-farmer').classList.toggle('hidden', mode !== 'farmer');
+      document.getElementById('view-expert').classList.toggle('hidden', mode !== 'expert');
+
+      const btnFarmer = document.getElementById('nav-btn-farmer');
+      const btnExpert = document.getElementById('nav-btn-expert');
+
+      if (mode === 'farmer') {
+        btnFarmer.className = "text-primary font-bold nav-active text-sm transition-colors";
+        btnExpert.className = "text-on-surface-variant hover:text-primary font-bold text-sm transition-colors";
+      } else {
+        btnExpert.className = "text-primary font-bold nav-active text-sm transition-colors";
+        btnFarmer.className = "text-on-surface-variant hover:text-primary font-bold text-sm transition-colors";
+        initOrRefreshMap();
+        loadExpertReports();
+      }
+    }
+
+    function scrollToScanner() {
+      switchMode('farmer');
+      document.getElementById('section-scanner').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function changeLanguage(lang) {
+      currentLang = lang;
+      
+      // Update every element with data-i18n attribute
+      const dict = I18N[lang] || I18N['en'];
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (dict[key]) {
+          el.innerText = dict[key];
+        }
+      });
+
+      // Re-trigger diagnosis API to update advisory in selected language
+      if (currentReportPayload) {
+        submitDiagnosis();
+      }
+    }
+
+    function loadDemoSample(sampleKey) {
+      const cropSelect = document.getElementById('farmer-crop');
+      if (sampleKey === 'rice_blast') cropSelect.value = 'rice';
+      else if (sampleKey === 'wheat_rust') cropSelect.value = 'wheat';
+      else if (sampleKey === 'tomato_blight') cropSelect.value = 'tomato';
+      else if (sampleKey === 'healthy') cropSelect.value = 'cotton';
+
+      submitDiagnosis();
+    }
+
+    function handleImageSelect(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = document.getElementById('img-preview');
+          img.src = e.target.result;
+          document.getElementById('preview-wrapper').classList.remove('hidden');
+          document.getElementById('upload-prompt').classList.add('hidden');
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    async function submitDiagnosis() {
+      const crop = document.getElementById('farmer-crop').value;
+      const stage = document.getElementById('farmer-stage').value;
+      const temp = parseFloat(document.getElementById('input-temp').value);
+      const hum = parseFloat(document.getElementById('input-hum').value);
+      const fileInput = document.getElementById('file-input');
+
+      const formData = new FormData();
+      formData.append('crop', crop);
+      formData.append('growth_stage', stage);
+      formData.append('temperature_c', temp);
+      formData.append('humidity_pct', hum);
+      formData.append('language', currentLang);
+      
+      if (fileInput.files.length > 0) {
+        formData.append('image', fileInput.files[0]);
+      }
+
+      try {
+        const res = await fetch('/api/farmer/diagnose', { method: 'POST', body: formData });
+        const data = await res.json();
+        currentReportPayload = data;
+        renderDiagnosisResult(data);
+      } catch (err) {
+        console.error('Diagnosis Error:', err);
+      }
+    }
+
+    function renderDiagnosisResult(data) {
+      const ai = data.ai_prediction;
+      const fusion = data.risk_fusion;
+      const adv = data.advisory;
+
+      document.getElementById('res-disease-name').innerText = adv.disease_name;
+      document.getElementById('res-model-used').innerText = `${ai.model_architecture} • Confidence: ${intPct(ai.confidence)}%`;
+      document.getElementById('confidence-pct').innerText = `${intPct(ai.confidence)}%`;
+
+      const score = intPct(fusion.farm_risk_score);
+      const card = document.getElementById('risk-banner-card');
+      const title = document.getElementById('risk-banner-title');
+      const desc = document.getElementById('risk-banner-desc');
+      const pill = document.getElementById('risk-score-pill');
+
+      title.innerText = `Overall Risk: ${fusion.risk_level.toUpperCase()} RISK`;
+      desc.innerText = fusion.summary_explanation;
+      pill.innerText = `${score}% Risk Score`;
+
+      if (fusion.risk_level === 'High') {
+        card.className = "md:col-span-12 lg:col-span-4 bg-error-container rounded-xl ambient-shadow p-6 flex flex-col justify-between border-l-4 border-error";
+      } else if (fusion.risk_level === 'Medium') {
+        card.className = "md:col-span-12 lg:col-span-4 bg-amber-100 rounded-xl ambient-shadow p-6 flex flex-col justify-between border-l-4 border-amber-500 text-amber-900";
+      } else {
+        card.className = "md:col-span-12 lg:col-span-4 bg-secondary-container/40 rounded-xl ambient-shadow p-6 flex flex-col justify-between border-l-4 border-secondary text-secondary-900";
+      }
+
+      const xaiContainer = document.getElementById('xai-container');
+      xaiContainer.innerHTML = fusion.xai_breakdown.map(item => `
+        <div class="bg-surface p-3 rounded-lg border border-outline-variant/30 space-y-1">
+          <div class="flex justify-between text-xs font-bold text-primary">
+            <span>${item.factor} (${item.weight})</span>
+            <span class="text-secondary font-extrabold">${item.score}</span>
+          </div>
+          <p class="text-xs text-on-surface-variant font-medium">${item.signal}</p>
+        </div>
+      `).join('');
+
+      renderAdvisory(data);
+    }
+
+    function renderAdvisory(data) {
+      const adv = data.advisory;
+      
+      const dosList = document.getElementById('list-dos');
+      dosList.innerHTML = adv.dos.map(d => `<li>${d}</li>`).join('');
+
+      const dontsList = document.getElementById('list-donts');
+      dontsList.innerHTML = adv.donts.map(d => `<li>${d}</li>`).join('');
+
+      const chem = adv.treatment.chemical;
+      document.getElementById('chem-name').innerText = chem.pesticide || 'None';
+      document.getElementById('chem-dose').innerText = chem.dosage || 'N/A';
+      document.getElementById('chem-wait').innerText = chem.safety_period || 'N/A';
+      document.getElementById('organic-remedy').innerText = adv.treatment.organic || 'Routine maintenance';
+    }
+
+    function triggerVoiceAdvisory() {
+      if (!currentReportPayload) {
+        submitDiagnosis();
+        return;
+      }
+      const script = currentReportPayload.advisory.voice_advisory.text;
+      const lang = currentReportPayload.advisory.voice_advisory.lang;
+
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(script);
+        utterance.lang = lang === 'hi' ? 'hi-IN' : (lang === 'te' ? 'te-IN' : (lang === 'pa' ? 'pa-IN' : 'en-IN'));
+        utterance.rate = 0.9;
+        window.speechSynthesis.speak(utterance);
+      } else {
+        alert('Voice synthesis not supported on this browser.');
+      }
+    }
+
+    // MAP & GEOSPATIAL FUNCTIONS
+    function initOrRefreshMap() {
+      if (!leafletMap) {
+        leafletMap = L.map('hotspot-map').setView([19.7515, 75.7139], 10);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 18,
+          attribution: '© OpenStreetMap'
+        }).addTo(leafletMap);
+
+        markersLayerGroup = L.layerGroup().addTo(leafletMap);
+        ndviLayerGroup = L.layerGroup().addTo(leafletMap);
+      }
+
+      loadMapHotspots();
+    }
+
+    async function loadMapHotspots() {
+      try {
+        const res = await fetch('/api/geospatial/hotspots');
+        const geojson = await res.json();
+        
+        markersLayerGroup.clearLayers();
+        L.geoJSON(geojson, {
+          pointToLayer: function(feature, latlng) {
+            const props = feature.properties;
+            const color = props.color || '#ba1a1a';
+            
+            const icon = L.divIcon({
+              className: 'custom-leaflet-marker',
+              html: `<div class="pulse-ring-marker" style="background-color: ${color}; box-shadow: 0 0 10px ${color};"></div>`,
+              iconSize: [24, 24],
+              iconAnchor: [12, 12]
+            });
+            
+            return L.marker(latlng, { icon: icon });
+          },
+          onEachFeature: function(feature, layer) {
+            layer.on('click', function() {
+              openHotspotPanel(feature.properties);
+            });
+          }
+        }).addTo(markersLayerGroup);
+      } catch (err) {
+        console.error('Map Hotspots Error:', err);
+      }
+    }
+
+    function openHotspotPanel(props) {
+      const panel = document.getElementById('hotspot-panel');
+      document.getElementById('panel-district-title').innerText = `${props.village || 'Jalna District'} Zone`;
+      document.getElementById('panel-district-sub').innerText = `Farmer: ${props.farmer_name} • Crop: ${props.crop}`;
+      document.getElementById('panel-risk-status').innerText = `${props.risk_level} Risk (${intPct(props.risk_score)}%)`;
+      
+      panel.classList.remove('hidden');
+    }
+
+    function closeHotspotPanel() {
+      document.getElementById('hotspot-panel').classList.add('hidden');
+    }
+
+    function filterRisk(level) {
+      applyFilters();
+    }
+
+    function applyFilters() {
+      loadMapHotspots();
+    }
+
+    async function toggleNDVILayer() {
+      if (!leafletMap) return;
+      isNdviVisible = !isNdviVisible;
+      
+      if (isNdviVisible) {
+        try {
+          const res = await fetch('/api/geospatial/ndvi');
+          const ndviGeojson = await res.json();
+          ndviLayerGroup.clearLayers();
+
+          L.geoJSON(ndviGeojson, {
+            style: function(feature) {
+              const score = feature.properties.ndvi_score;
+              const fill = score < 0.4 ? '#ba1a1a' : (score < 0.6 ? '#ff9800' : '#1b6d24');
+              return { fillColor: fill, weight: 1, color: '#ffffff', fillOpacity: 0.35 };
+            }
+          }).addTo(ndviLayerGroup);
+          
+          document.getElementById('btn-toggle-ndvi').classList.add('border-primary', 'text-primary');
+        } catch (err) {
+          console.error('NDVI Error:', err);
+        }
+      } else {
+        ndviLayerGroup.clearLayers();
+        document.getElementById('btn-toggle-ndvi').classList.remove('border-primary', 'text-primary');
+      }
+    }
+
+    async function loadExpertReports() {
+      try {
+        const res = await fetch('/api/expert/reports');
+        const data = await res.json();
+
+        const tbody = document.getElementById('tbl-reports-body');
+        tbody.innerHTML = data.reports.map(r => `
+          <tr class="hover:bg-surface-variant/40 transition">
+            <td class="p-3 font-mono text-[11px] text-on-surface-variant">${r.id}</td>
+            <td class="p-3 font-bold text-primary">${r.farmer_name}</td>
+            <td class="p-3">${r.village}</td>
+            <td class="p-3 capitalize">${r.crop}</td>
+            <td class="p-3 font-semibold">${r.disease_name}</td>
+            <td class="p-3 font-bold ${r.risk_level === 'High' ? 'text-error' : 'text-secondary'}">${intPct(r.farm_risk_score)}%</td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] ${r.expert_status.includes('Confirmed') ? 'bg-secondary-container text-on-secondary-container font-bold' : 'bg-surface-variant text-on-surface-variant'}">${r.expert_status}</span></td>
+            <td class="p-3 space-x-1">
+              <button onclick="validateReport('${r.id}', 'Verified - Confirmed')" class="bg-secondary text-on-secondary font-bold px-2 py-1 rounded text-[10px]">Verify</button>
+              <button onclick="validateReport('${r.id}', 'Overridden - False Alarm')" class="bg-error text-on-error font-bold px-2 py-1 rounded text-[10px]">Override</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error('Expert Reports Error:', err);
+      }
+    }
+
+    async function validateReport(reportId, status) {
+      try {
+        await fetch('/api/expert/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ report_id: reportId, expert_status: status })
+        });
+        loadExpertReports();
+        loadMapHotspots();
+      } catch (err) {
+        alert('Validation error');
+      }
+    }
+
+    function openBroadcastModal() {
+      document.getElementById('modal-broadcast').classList.remove('hidden');
+    }
+    function closeBroadcastModal() {
+      document.getElementById('modal-broadcast').classList.add('hidden');
+    }
+
+    async function sendBroadcastAlert() {
+      const village = document.getElementById('alert-village').value;
+      const radius = parseFloat(document.getElementById('alert-radius').value);
+      const msg = document.getElementById('alert-msg-hi').value;
+
+      try {
+        await fetch('/api/expert/broadcast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            target_village: village,
+            radius_km: radius,
+            message_hi: msg,
+            message_en: "ALERT: Outbreak detected in your area."
+          })
+        });
+        alert('Regional Alert Dispatched Successfully!');
+        closeBroadcastModal();
+        loadExpertReports();
+      } catch (err) {
+        alert('Broadcast failed.');
+      }
+    }
+
+    function intPct(val) { return Math.round((val || 0) * 100); }
+
+    submitDiagnosis();
+  </script>
+</body>
+</html>

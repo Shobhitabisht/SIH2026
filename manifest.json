@@ -1,0 +1,21 @@
+{
+  "name": "TerraSync AI - Crop Early Warning PWA",
+  "short_name": "TerraSync",
+  "description": "AI-Powered Crop Disease & Pest Early Warning System",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#16a34a",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/620/620851.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/620/620851.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

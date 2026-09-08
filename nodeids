@@ -1,0 +1,10 @@
+[
+  "backend/tests/test_ai.py::test_classifier_predict_fallback",
+  "backend/tests/test_ai.py::test_knowledge_base_classes",
+  "backend/tests/test_api.py::test_expert_reports_endpoint",
+  "backend/tests/test_api.py::test_farmer_diagnose_endpoint",
+  "backend/tests/test_api.py::test_geospatial_hotspots_endpoint",
+  "backend/tests/test_api.py::test_health_check",
+  "backend/tests/test_fusion.py::test_risk_fusion_healthy",
+  "backend/tests/test_fusion.py::test_risk_fusion_high_risk"
+]
